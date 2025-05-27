@@ -348,8 +348,9 @@
 
 	{#if showEditModal && currentEditItem}
 		<EditItemModal
+			bind:show={showEditModal}
 			item={currentEditItem}
-			on:close={() => (showEditModal = false)}
+			on:close={() => { showEditModal = false; currentEditItem = null; }}
 			on:save={handleEditSave}
 			on:delete={handleDeleteItem}
 		/>
