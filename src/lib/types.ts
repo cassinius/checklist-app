@@ -26,6 +26,7 @@ export interface Checklist {
 	items: ChecklistItem[];
 	templateId?: string; // If created from a template
 	recurrencePattern?: RecurrencePattern;
+	customRecurrenceDetails?: CustomRecurrence;
 	createdAt: Date;
 	completedAt?: Date;
 }

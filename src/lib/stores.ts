@@ -1,5 +1,11 @@
-import { writable } from 'svelte/store';
-import type { Checklist, ChecklistTemplate, ChecklistItem, RecurrencePattern } from './types';
+import { writable, get } from 'svelte/store';
+import type {
+	Checklist,
+	ChecklistTemplate,
+	ChecklistItem,
+	RecurrencePattern,
+	CustomRecurrence
+} from './types';
 import { sampleChecklist } from '../fixtures/sampleChecklist';
 
 /**
@@ -33,12 +39,114 @@ const sampleTemplates: ChecklistTemplate[] = [
 	}
 ];
 
-// Create stores
-export const checklists = writable<Checklist[]>([sampleChecklist]);
-export const templates = writable<ChecklistTemplate[]>(sampleTemplates);
-export const currentChecklist = writable<Checklist | null>(sampleChecklist);
+// --- Local Storage Persistence ---
 
-// Store actions
+const LOCAL_STORAGE_KEYS_CHECKLISTS = 'checklistsData';
+const LOCAL_STORAGE_KEYS_TEMPLATES = 'templatesData';
+
+// Helper function to recursively parse date strings to Date objects
+function parseDates(obj: any): any {
+	if (!obj) return obj;
+	if (typeof obj === 'string') {
+		// Basic ISO date string check
+		if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(obj)) {
+			const date = new Date(obj);
+			if (!isNaN(date.getTime())) return date;
+		}
+	} else if (Array.isArray(obj)) {
+		return obj.map((item) => parseDates(item));
+	} else if (typeof obj === 'object') {
+		for (const key in obj) {
+			if (Object.prototype.hasOwnProperty.call(obj, key)) {
+				// Date keys in Checklist, ChecklistItem, ChecklistTemplate
+				if (['createdAt', 'completedAt', 'lastUsed'].includes(key)) {
+					if (obj[key]) {
+						const date = new Date(obj[key]);
+						if (!isNaN(date.getTime())) {
+							obj[key] = date;
+						} else {
+							// console.warn(`Failed to parse date for key ${key}:`, obj[key]);
+						}
+					}
+				} else {
+					obj[key] = parseDates(obj[key]); // Recurse for nested objects/arrays
+				}
+			}
+		}
+	}
+	return obj;
+}
+
+// Load initial data for checklists
+let initialChecklists: Checklist[] = [sampleChecklist]; // Default
+if (typeof window !== 'undefined') {
+	try {
+		const storedChecklists = localStorage.getItem(LOCAL_STORAGE_KEYS_CHECKLISTS);
+		if (storedChecklists) {
+			const parsed = JSON.parse(storedChecklists);
+			initialChecklists = parseDates(parsed);
+		}
+	} catch (error) {
+		console.error('Error loading checklists from Local Storage:', error);
+		// Fallback to sampleChecklist is already default
+	}
+}
+
+// Load initial data for templates
+let initialTemplates: ChecklistTemplate[] = sampleTemplates; // Default
+if (typeof window !== 'undefined') {
+	try {
+		const storedTemplates = localStorage.getItem(LOCAL_STORAGE_KEYS_TEMPLATES);
+		if (storedTemplates) {
+			const parsed = JSON.parse(storedTemplates);
+			initialTemplates = parseDates(parsed);
+		}
+	} catch (error) {
+		console.error('Error loading templates from Local Storage:', error);
+		// Fallback to sampleTemplates is already default
+	}
+}
+
+// Create stores
+export const checklists = writable<Checklist[]>(initialChecklists);
+export const templates = writable<ChecklistTemplate[]>(initialTemplates);
+
+// Determine initial currentChecklist
+// If initialChecklists has data and sampleChecklist (by id) is in it, use that.
+// Otherwise, if initialChecklists has any data, use the first one.
+// Otherwise, set to null.
+let initialCurrentChecklist: Checklist | null = null;
+if (initialChecklists.length > 0) {
+	const sampleInLoaded = initialChecklists.find(c => c.id === sampleChecklist.id);
+	if (sampleInLoaded) {
+		initialCurrentChecklist = sampleInLoaded;
+	} else {
+		initialCurrentChecklist = initialChecklists[0];
+	}
+}
+export const currentChecklist = writable<Checklist | null>(initialCurrentChecklist);
+
+
+// Subscribe to changes and save to Local Storage
+if (typeof window !== 'undefined') {
+	checklists.subscribe((value) => {
+		localStorage.setItem(LOCAL_STORAGE_KEYS_CHECKLISTS, JSON.stringify(value));
+	});
+
+	templates.subscribe((value) => {
+		localStorage.setItem(LOCAL_STORAGE_KEYS_TEMPLATES, JSON.stringify(value));
+	});
+}
+
+// --- Store actions ---
+
+// Helper to update currentChecklist if it's the one being modified
+function updateCurrentChecklistIfNeeded(checklistId: string, modifiedList: Checklist | null) {
+    if (get(currentChecklist)?.id === checklistId) {
+        currentChecklist.set(modifiedList);
+    }
+}
+
 export function toggleItemCompletion(checklistId: string, itemId: string) {
 	checklists.update((lists) => {
 		return lists.map((list) => {
@@ -60,24 +168,35 @@ export function toggleItemCompletion(checklistId: string, itemId: string) {
 		});
 	});
 
-	// Also update currentChecklist if it matches
-	currentChecklist.update((list) => {
-		if (list && list.id === checklistId) {
-			return {
-				...list,
-				items: list.items.map((item) =>
-					item.id === itemId
-						? {
-								...item,
-								isDone: !item.isDone,
-								completedAt: !item.isDone ? new Date() : undefined
-							}
-						: item
-				)
-			};
-		}
-		return list;
+	// No direct update to currentChecklist here, it's derived or set by other actions.
+	// The main checklists store update will trigger UI updates for components subcribed to currentChecklist
+	// if currentChecklist happens to be the one modified.
+	// However, if a checklist is modified, and it IS the currentChecklist, we should update it.
+	const modifiedChecklist = get(checklists).find(c => c.id === checklistId) || null;
+	updateCurrentChecklistIfNeeded(checklistId, modifiedChecklist);
+}
+
+// Update checklist details (name and description)
+export function updateChecklistDetails(
+	checklistId: string,
+	name: string,
+	description?: string
+) {
+	checklists.update((lists) => {
+		return lists.map((list) => {
+			if (list.id === checklistId) {
+				return {
+					...list,
+					name: name,
+					description: description
+				};
+			}
+			return list;
+		});
 	});
+
+	const modifiedChecklistAfterUpdate = get(checklists).find(c => c.id === checklistId) || null;
+	updateCurrentChecklistIfNeeded(checklistId, modifiedChecklistAfterUpdate);
 }
 
 export function addItemToChecklist(
@@ -104,16 +223,8 @@ export function addItemToChecklist(
 		});
 	});
 
-	// Also update currentChecklist if it matches
-	currentChecklist.update((list) => {
-		if (list && list.id === checklistId) {
-			return {
-				...list,
-				items: [...list.items, newItem]
-			};
-		}
-		return list;
-	});
+	const modifiedChecklistAfterAddItem = get(checklists).find(c => c.id === checklistId) || null;
+	updateCurrentChecklistIfNeeded(checklistId, modifiedChecklistAfterAddItem);
 }
 
 export function saveAsTemplate(checklist: Checklist) {
@@ -186,12 +297,9 @@ export function createNewChecklist(name: string, description?: string) {
 export function deleteChecklist(checklistId: string) {
 	checklists.update((lists) => lists.filter((list) => list.id !== checklistId));
 
-	currentChecklist.update((list) => {
-		if (list && list.id === checklistId) {
-			return null;
-		}
-		return list;
-	});
+	if (get(currentChecklist)?.id === checklistId) {
+		currentChecklist.set(null); // Clear current if it's the one deleted
+	}
 }
 
 export function deleteTemplate(templateId: string) {
@@ -233,26 +341,8 @@ export function updateChecklistItem(
 		});
 	});
 
-	// Also update currentChecklist if it matches
-	currentChecklist.update((list) => {
-		if (list && list.id === checklistId) {
-			return {
-				...list,
-				items: list.items.map((item) => {
-					if (item.id === itemId) {
-						return {
-							...item,
-							title: updates.title ?? item.title,
-							description:
-								updates.description === null ? undefined : (updates.description ?? item.description)
-						};
-					}
-					return item;
-				})
-			};
-		}
-		return list;
-	});
+	const modifiedChecklistAfterItemUpdate = get(checklists).find(c => c.id === checklistId) || null;
+	updateCurrentChecklistIfNeeded(checklistId, modifiedChecklistAfterItemUpdate);
 }
 
 // Delete a checklist item
@@ -269,46 +359,29 @@ export function deleteChecklistItem(checklistId: string, itemId: string) {
 		});
 	});
 
-	// Also update currentChecklist if it matches
-	currentChecklist.update((list) => {
-		if (list && list.id === checklistId) {
-			return {
-				...list,
-				items: list.items.filter((item) => item.id !== itemId)
-			};
-		}
-		return list;
-	});
+	const modifiedChecklistAfterItemDelete = get(checklists).find(c => c.id === checklistId) || null;
+	updateCurrentChecklistIfNeeded(checklistId, modifiedChecklistAfterItemDelete);
 }
 
 // Set recurrence pattern
 export function setChecklistRecurrence(
 	checklistId: string,
 	pattern: RecurrencePattern,
-	customData?: any
+	customData?: CustomRecurrence
 ) {
 	checklists.update((lists) => {
 		return lists.map((list) => {
 			if (list.id === checklistId) {
 				return {
 					...list,
-					recurrencePattern: pattern
-					// Store customData in a real application
+					recurrencePattern: pattern,
+					customRecurrenceDetails: pattern === 'custom' ? customData : undefined
 				};
 			}
 			return list;
 		});
 	});
 
-	// Also update currentChecklist if it matches
-	currentChecklist.update((list) => {
-		if (list && list.id === checklistId) {
-			return {
-				...list,
-				recurrencePattern: pattern
-				// Store customData in a real application
-			};
-		}
-		return list;
-	});
+	const modifiedChecklistAfterRecurrence = get(checklists).find(c => c.id === checklistId) || null;
+	updateCurrentChecklistIfNeeded(checklistId, modifiedChecklistAfterRecurrence);
 }
