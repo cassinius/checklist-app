@@ -11,14 +11,11 @@
 		createNewChecklist
 	} from '$lib/stores';
 	import ChecklistView from '$lib/components/ChecklistView.svelte';
-	import Sidebar from '$lib/components/Sidebar.svelte';
+	import ActivityBar from '$lib/components/ActivityBar.svelte';
+	import ListPanel from '$lib/components/ListPanel.svelte';
 
-	let activeTab: 'checklists' | 'templates' = 'checklists';
-
-	// Handle tab switching
-	function switchTab(tab: 'checklists' | 'templates') {
-		activeTab = tab;
-	}
+	let activeContext: 'checklists' | 'templates' = 'checklists';
+	let isListPanelExpanded = true; // Default to expanded
 
 	// Create checklist from template
 	function handleCreateFromTemplate(templateId: string) {
@@ -42,16 +39,53 @@
 			alert(`Template "${template.name}" saved successfully!`);
 		}
 	}
+
+	// Handle context change from ActivityBar
+	function handleContextChange(event: CustomEvent<'checklists' | 'templates'>) {
+		activeContext = event.detail;
+		if (!isListPanelExpanded) {
+			isListPanelExpanded = true; // Expand panel when context changes
+		}
+		// Optionally, clear currentChecklist if context changes away from 'checklists'
+		if (activeContext !== 'checklists' && $currentChecklist) {
+			currentChecklist.set(null);
+		}
+	}
+
+	function handleSelectChecklist(event: CustomEvent<{checklist: any}>) { // Using 'any' for event.detail as it's a generic object from ListPanel
+		currentChecklist.set(event.detail.checklist);
+	}
+
 </script>
 
-<Sidebar {activeTab} {switchTab} {handleCreateFromTemplate} {handleCreateNewChecklist} />
-
-<main class="flex-1 overflow-y-auto p-6">
-	{#if $currentChecklist}
-		<ChecklistView checklist={$currentChecklist} {handleSaveAsTemplate} />
-	{:else}
-		<div class="py-12 text-center">
-			<p class="text-gray-500">Select or create a checklist to get started</p>
-		</div>
-	{/if}
-</main>
+<div class="flex h-screen bg-gray-100"> {/* Added bg-gray-100 for overall page background */}
+	<ActivityBar currentActiveContext={activeContext} on:contextChange={handleContextChange} />
+	<ListPanel
+		bind:isExpanded={isListPanelExpanded}
+		activeContext={activeContext}
+		checklists={$checklists}
+		templates={$templates}
+		currentChecklistId={$currentChecklist?.id}
+		on:toggleExpansion={() => (isListPanelExpanded = !isListPanelExpanded)}
+		on:selectChecklist={handleSelectChecklist}
+		on:createNewChecklist={handleCreateNewChecklist}
+		on:createFromTemplate={handleCreateFromTemplate}
+	/>
+	<main class="flex-1 overflow-y-auto p-6 bg-white"> {/* Changed to bg-white for content area, assuming panel is also white/light */}
+		{#if $currentChecklist}
+			<ChecklistView checklist={$currentChecklist} {handleSaveAsTemplate} />
+		{:else}
+			<div class="py-12 text-center">
+				<p class="text-gray-500">
+					{#if activeContext === 'checklists'}
+						Select or create a checklist to get started.
+					{:else if activeContext === 'templates'}
+						Select a template to create a new checklist.
+					{:else}
+						No content selected.
+					{/if}
+				</p>
+			</div>
+		{/if}
+	</main>
+</div>
