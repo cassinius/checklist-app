@@ -42,14 +42,14 @@
 {#if show}
   <div
     bind:this={menuElement}
-    class="absolute bg-white border border-gray-300 rounded-md shadow-lg p-1 z-50"
+    class="absolute  border border-gray-300 rounded-md shadow-lg p-1 z-50"
     style="top: {y}px; left: {x}px; min-width: 120px;"
   >
     <ul class="space-y-1">
       <li>
         <button
           on:click|stopPropagation={handleDelete} 
-          class="block w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-red-500 hover:text-white rounded focus:outline-none focus:bg-red-500 focus:text-white"
+          class="block w-full text-left px-3 py-1.5 text-sm  hover:bg-red-500 hover:text-white rounded focus:outline-none focus:bg-red-500 focus:text-white"
           title="Delete Item"
         >
           Delete
@@ -60,7 +60,7 @@
       <li>
         <button
           on:click={() => { dispatch('edit', { itemId }); dispatch('close'); }}
-          class="block w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 rounded focus:outline-none focus:bg-gray-100"
+          class="block w-full text-left px-3 py-1.5 text-sm  hover: rounded focus:outline-none focus:"
         >
           Edit
         </button>

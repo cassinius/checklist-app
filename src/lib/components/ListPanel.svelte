@@ -54,12 +54,12 @@
 </script>
 
 <aside 
-	class="flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ease-in-out {isExpanded ? 'w-64 p-4' : 'w-0 p-0'} overflow-hidden"
+	class="flex flex-col  border-r border-secondary  transition-all duration-300 ease-in-out {isExpanded ? 'w-64 p-4' : 'w-0 p-0'} overflow-hidden"
 >
 	{#if isExpanded}
 		<!-- Header with Title and Collapse Button -->
 		<div class="flex items-center justify-between mb-4">
-			<h2 class="text-lg font-semibold text-gray-700">
+			<h2 class="text-lg font-semibold ">
 				{#if activeContext === 'checklists'}
 					Checklists
 				{:else if activeContext === 'templates'}
@@ -94,7 +94,7 @@
 					{#each checklists as checklist (checklist.id)}
 						<div
 							class="relative p-2 rounded-md cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500
-								{currentChecklistId === checklist.id ? 'bg-blue-100 border border-blue-500 text-blue-700' : 'hover:bg-gray-100 text-gray-700 border border-transparent'}"
+								{currentChecklistId === checklist.id ? 'bg-blue-100 border border-blue-500 text-blue-700' : 'hover:  border border-transparent'}"
 							on:click={() => dispatch('selectChecklist', { checklist })}
 							on:contextmenu={(event) => handleChecklistContextMenu(event, checklist.id)}
 							role="button" tabindex="0"
@@ -115,7 +115,7 @@
 				<div class="space-y-1">
 					{#each templates as template (template.id)}
 						<div
-							class="p-2 rounded-md cursor-pointer hover:bg-gray-100 text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 border border-transparent"
+							class="p-2 rounded-md cursor-pointer hover:  focus:outline-none focus:ring-1 focus:ring-blue-500 border border-transparent"
 							on:click={() => dispatch('createFromTemplate', { templateId: template.id })}
 							title={`Use template: ${template.name}`}
 							role="button" tabindex="0"
@@ -144,4 +144,3 @@
 		on:close={closeContextMenu}
 	/>
 {/if}
-```

@@ -52,17 +52,18 @@
 		}
 	}
 
-	function handleSelectChecklist(event: CustomEvent<{checklist: any}>) { // Using 'any' for event.detail as it's a generic object from ListPanel
+	function handleSelectChecklist(event: CustomEvent<{ checklist: any }>) {
+		// Using 'any' for event.detail as it's a generic object from ListPanel
 		currentChecklist.set(event.detail.checklist);
 	}
-
 </script>
 
-<div class="flex h-screen bg-gray-100"> {/* Added bg-gray-100 for overall page background */}
+<!-- Added  for overall page background -->
+<div class="flex h-screen ">
 	<ActivityBar currentActiveContext={activeContext} on:contextChange={handleContextChange} />
 	<ListPanel
 		bind:isExpanded={isListPanelExpanded}
-		activeContext={activeContext}
+		{activeContext}
 		checklists={$checklists}
 		templates={$templates}
 		currentChecklistId={$currentChecklist?.id}
@@ -71,7 +72,9 @@
 		on:createNewChecklist={handleCreateNewChecklist}
 		on:createFromTemplate={handleCreateFromTemplate}
 	/>
-	<main class="flex-1 overflow-y-auto p-6 bg-white"> {/* Changed to bg-white for content area, assuming panel is also white/light */}
+
+	<!-- Changed to  for content area, assuming panel is also white/light -->
+	<main class="flex-1 overflow-y-auto  p-6">
 		{#if $currentChecklist}
 			<ChecklistView checklist={$currentChecklist} {handleSaveAsTemplate} />
 		{:else}

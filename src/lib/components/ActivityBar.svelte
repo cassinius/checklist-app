@@ -20,17 +20,23 @@
 	`;
 </script>
 
-<aside class="flex w-16 flex-col items-center border-r border-gray-200 bg-white py-4 space-y-3">
+<aside class="flex w-16 flex-col items-center space-y-3 border-r border-secondary py-4">
 	<button
 		on:click={() => dispatch('contextChange', 'checklists')}
-		class="p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 {currentActiveContext === 'checklists' ? 'bg-gray-200 text-blue-600' : 'text-gray-500 hover:bg-gray-200'}"
+		class="focus:ring-opacity-50 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none {currentActiveContext ===
+		'checklists'
+			? 'bg-gray-200 text-blue-600'
+			: 'text-gray-500 hover:bg-gray-200'}"
 		title="Checklists"
 	>
 		{@html checklistsIcon}
 	</button>
 	<button
 		on:click={() => dispatch('contextChange', 'templates')}
-		class="p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 {currentActiveContext === 'templates' ? 'bg-gray-200 text-blue-600' : 'text-gray-500 hover:bg-gray-200'}"
+		class="focus:ring-opacity-50 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none {currentActiveContext ===
+		'templates'
+			? 'bg-gray-200 text-blue-600'
+			: 'text-gray-500 hover:bg-gray-200'}"
 		title="Templates"
 	>
 		{@html templatesIcon}
