@@ -1,12 +1,34 @@
 <!-- src/lib/components/Sidebar.svelte -->
 <script lang="ts">
-	import { checklists, templates, currentChecklist } from '$lib/stores';
+	import { checklists, templates, currentChecklist, deleteChecklist } from '$lib/stores';
 	import type { ChecklistTemplate } from '$lib/types';
+	import ContextMenu from './ContextMenu.svelte';
 
 	export let activeTab: 'checklists' | 'templates';
 	export let switchTab: (tab: 'checklists' | 'templates') => void;
 	export let handleCreateFromTemplate: (templateId: string) => void;
 	export let handleCreateNewChecklist: () => void;
+
+	// Context Menu State
+	let showContextMenu = false;
+	let contextMenuX = 0;
+	let contextMenuY = 0;
+	let contextMenuChecklistId: string | null = null;
+
+	function handleContextMenu(event: MouseEvent, checklistId: string) {
+		event.preventDefault();
+		contextMenuX = event.clientX;
+		contextMenuY = event.clientY;
+		contextMenuChecklistId = checklistId;
+		showContextMenu = true;
+	}
+
+	function handleDeleteChecklistFromContextMenu(event: CustomEvent<{ itemId: string }>) {
+		if (event.detail.itemId) {
+			deleteChecklist(event.detail.itemId);
+		}
+		showContextMenu = false; // Explicitly close, also handled by ContextMenu's on:close
+	}
 </script>
 
 <aside class="flex w-64 flex-col border-r border-gray-200 bg-white">
@@ -59,10 +81,11 @@
 				<div class="space-y-2">
 					{#each $checklists as checklist}
 						<div
-							class="p-3 {$currentChecklist?.id === checklist.id
+							class="relative p-3 {$currentChecklist?.id === checklist.id // Added relative for potential future menu item positioning inside
 								? 'border border-blue-200 bg-blue-50'
 								: 'border border-gray-200 bg-white'} cursor-pointer rounded hover:bg-blue-100"
 							on:click={() => currentChecklist.set(checklist)}
+							on:contextmenu={(event) => handleContextMenu(event, checklist.id)}
 						>
 							<h3 class="font-medium">{checklist.name}</h3>
 							<div class="mt-1 flex items-center text-sm text-gray-500">
@@ -123,4 +146,18 @@
 			</div>
 		{/if}
 	</div>
+
+	{#if showContextMenu && contextMenuChecklistId}
+		<ContextMenu
+			bind:show={showContextMenu}
+			x={contextMenuX}
+			y={contextMenuY}
+			itemId={contextMenuChecklistId}
+			on:delete={handleDeleteChecklistFromContextMenu}
+			on:close={() => {
+				showContextMenu = false;
+				contextMenuChecklistId = null; // Clear the ID when closing
+			}}
+		/>
+	{/if}
 </aside>
