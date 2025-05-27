@@ -226,7 +226,7 @@ describe('stores.ts', () => {
 				// 4. expect(get(newChecklists)[0].createdAt).toBeInstanceOf(Date);
 
 				// Simplified: if we set a store with string dates, then retrieve,
- spezifische date fields should be instances of Date if parseDates was implicitly called by a load.
+ 				// specific date fields should be instances of Date if parseDates was implicitly called by a load.
 				// However, our current setup calls parseDates only on initial load.
 				// So, this specific test is hard to do without module reset.
 

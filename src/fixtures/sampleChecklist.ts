@@ -1,4 +1,4 @@
-import type { Checklist } from "$lib/types";
+import type { Checklist, ChecklistTemplate } from "$lib/types";
 
 export const sampleChecklist: Checklist = {
   id: 'checklist-1',
@@ -36,3 +36,5 @@ export const sampleChecklist: Checklist = {
   ],
   createdAt: new Date()
 };
+
+export const sampleChecklistTemplate = {} as ChecklistTemplate;
