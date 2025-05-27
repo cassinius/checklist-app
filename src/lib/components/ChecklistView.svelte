@@ -3,7 +3,7 @@
   import { toggleItemCompletion, addItemToChecklist, updateChecklistItem, deleteChecklistItem, setChecklistRecurrence, updateChecklistDetails } from '$lib/stores';
   import type { Checklist, ChecklistItem, RecurrencePattern, CustomRecurrence } from '$lib/types';
   import RecurrenceModal from './RecurrenceModal.svelte';
-  import EditItemModal from './EditItemModal.svelte';
+  // EditItemModal import removed
   
   export let checklist: Checklist;
   export let handleSaveAsTemplate: () => void;
@@ -13,9 +13,14 @@
   let newItemDescription = '';
   let showRecurrenceModal = false;
   
-  // For item editing
-  let showEditModal = false;
-  let currentEditItem: ChecklistItem | null = null;
+  // State variables for item editing modal (removed)
+  // let showEditModal = false;
+  // let currentEditItem: ChecklistItem | null = null;
+
+  // New state variables for inline item editing
+  let editingItemId: string | null = null;
+  let inlineEditTitle: string = '';
+  let inlineEditDescription: string = '';
 
   // For checklist details editing
   let isEditingChecklistDetails = false;
@@ -69,32 +74,53 @@
     setChecklistRecurrence(checklist.id, pattern, customData);
     showRecurrenceModal = false;
   }
-  
-  function openEditModal(item: ChecklistItem) {
-    currentEditItem = item;
-    showEditModal = true;
+
+  // --- Inline Item Editing Functions ---
+
+  function startInlineEdit(item: ChecklistItem) {
+    editingItemId = item.id;
+    inlineEditTitle = item.title;
+    inlineEditDescription = item.description || '';
   }
-  
-  function handleEditSave(event: CustomEvent<{ title: string, description?: string }>) {
-    if (!currentEditItem) return;
-    
-    const { title, description } = event.detail;
-    updateChecklistItem(checklist.id, currentEditItem.id, {
-      title,
-      description: description === undefined ? null : description
-    });
-    
-    showEditModal = false;
-    currentEditItem = null;
+
+  function saveInlineEdit() {
+    if (editingItemId) {
+      if (!inlineEditTitle.trim()) {
+        alert('Item title cannot be empty.');
+        return;
+      }
+      updateChecklistItem(checklist.id, editingItemId, {
+        title: inlineEditTitle.trim(),
+        description: inlineEditDescription.trim() || undefined
+      });
+      editingItemId = null;
+      // Clearing these is optional as startInlineEdit repopulates
+      // inlineEditTitle = '';
+      // inlineEditDescription = '';
+    }
   }
-  
-  function handleDeleteItem(event: CustomEvent<string>) {
-    const itemId = event.detail;
+
+  function cancelInlineEdit() {
+    editingItemId = null;
+    // Clearing these is optional
+    // inlineEditTitle = '';
+    // inlineEditDescription = '';
+  }
+
+  function deleteInlineItem(itemId: string) {
+    if (!confirm('Are you sure you want to delete this item?')) return;
+    
     deleteChecklistItem(checklist.id, itemId);
     
-    showEditModal = false;
-    currentEditItem = null;
+    if (editingItemId === itemId) {
+      editingItemId = null; 
+      // inlineEditTitle = ''; // Optional clear
+      // inlineEditDescription = ''; // Optional clear
+    }
   }
+
+  // Old modal-related functions (openEditModal, handleEditSave, handleDeleteItem) are removed.
+  
 </script>
 
 <div>
@@ -222,10 +248,38 @@
 
 				<!-- Item content -->
 				<div
-					class="rounded-lg border p-4 {item.isDone
-						? 'border-gray-200 bg-gray-50'
-						: 'border-gray-300 bg-white'}"
+					class="rounded-lg border p-4 {editingItemId === item.id ? 'bg-blue-50 border-blue-200' : (item.isDone ? 'border-gray-200 bg-gray-50' : 'border-gray-300 bg-white')}"
 				>
+				{#if editingItemId === item.id}
+					<div>
+						<input
+							type="text"
+							bind:value={inlineEditTitle}
+							class="mb-2 w-full rounded border border-gray-300 p-2 font-medium text-gray-800 focus:border-blue-500 focus:ring-blue-500"
+							placeholder="Item title"
+						/>
+						<textarea
+							bind:value={inlineEditDescription}
+							class="mb-2 w-full rounded border border-gray-300 p-2 text-sm text-gray-600 focus:border-blue-500 focus:ring-blue-500"
+							rows="2"
+							placeholder="Item description (optional)"
+						></textarea>
+						<div class="flex justify-end space-x-2">
+							<button
+								class="rounded bg-green-500 px-3 py-1 text-xs text-white hover:bg-green-600"
+								on:click={saveInlineEdit}
+							>
+								Save
+							</button>
+							<button
+								class="rounded bg-gray-200 px-3 py-1 text-xs text-gray-700 hover:bg-gray-300"
+								on:click={cancelInlineEdit}
+							>
+								Cancel
+							</button>
+						</div>
+					</div>
+				{:else}
 					<div class="flex justify-between">
 						<h3 class="font-medium {item.isDone ? 'text-gray-500 line-through' : 'text-gray-800'}">
 							{item.title}
@@ -233,7 +287,8 @@
 						<div class="flex space-x-2">
 							<button
 								class="text-gray-400 hover:text-gray-600"
-								on:click={() => openEditModal(item)}
+								on:click={() => startInlineEdit(item)}
+								title="Edit item"
 							>
 								<svg
 									xmlns="http://www.w3.org/2000/svg"
@@ -250,7 +305,26 @@
 									/>
 								</svg>
 							</button>
-							<!-- Delete button was here, but EditItemModal now handles delete -->
+							<button
+								class="text-gray-400 hover:text-red-600"
+								on:click={() => deleteInlineItem(item.id)}
+								title="Delete item"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-4 w-4"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+									/>
+								</svg>
+							</button>
 						</div>
 					</div>
 					{#if item.description}
@@ -258,7 +332,8 @@
 							{item.description}
 						</p>
 					{/if}
-					{#if item.completedAt}
+				{/if}
+				{#if item.completedAt && editingItemId !== item.id}
 						<div class="mt-2 flex items-center text-xs text-gray-500">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -346,13 +421,5 @@
 		on:save={handleRecurrenceSave}
 	/>
 
-	{#if showEditModal && currentEditItem}
-		<EditItemModal
-			bind:show={showEditModal}
-			item={currentEditItem}
-			on:close={() => { showEditModal = false; currentEditItem = null; }}
-			on:save={handleEditSave}
-			on:delete={handleDeleteItem}
-		/>
-	{/if}
+	<!-- EditItemModal instantiation removed -->
 </div>
